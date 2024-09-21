@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v2"
@@ -17,8 +19,12 @@ type Config struct {
 		ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"`
 		ConnIdleTimeout time.Duration `yaml:"conn_idle_timeout"`
 		TestQuery       string        `yaml:"test_query"`
+		QueryFile       string        `yaml:"query_file"`
+		SeedQuery       string        `yaml:"seed_query"`       // New field for seed query
+		QueryTemplate   string        `yaml:"query_template"`   // New field for query template
 		QueryInterval   time.Duration `yaml:"query_interval"`
-		ConcurrentWorkers int         `yaml:"concurrent_workers"` // New field for the number of workers
+		ConcurrentWorkers int         `yaml:"concurrent_workers"`
+		Queries         []string      // List of queries read from the SQL file
 	} `yaml:"database"`
 }
 
@@ -48,6 +54,9 @@ func LoadConfig(configFile string) (*Config, error) {
 	viper.SetDefault("DATABASE_CONN_MAX_LIFETIME", cfg.Database.ConnMaxLifetime)
 	viper.SetDefault("DATABASE_CONN_IDLE_TIMEOUT", cfg.Database.ConnIdleTimeout)
 	viper.SetDefault("DATABASE_TEST_QUERY", cfg.Database.TestQuery)
+	viper.SetDefault("DATABASE_QUERY_FILE", cfg.Database.QueryFile)
+	viper.SetDefault("DATABASE_SEED_QUERY", cfg.Database.SeedQuery)
+	viper.SetDefault("DATABASE_QUERY_TEMPLATE", cfg.Database.QueryTemplate)
 	viper.SetDefault("DATABASE_QUERY_INTERVAL", cfg.Database.QueryInterval)
 	viper.SetDefault("DATABASE_CONCURRENT_WORKERS", cfg.Database.ConcurrentWorkers)
 
@@ -57,8 +66,42 @@ func LoadConfig(configFile string) (*Config, error) {
 	cfg.Database.ConnMaxLifetime = viper.GetDuration("DATABASE_CONN_MAX_LIFETIME")
 	cfg.Database.ConnIdleTimeout = viper.GetDuration("DATABASE_CONN_IDLE_TIMEOUT")
 	cfg.Database.TestQuery = viper.GetString("DATABASE_TEST_QUERY")
+	cfg.Database.QueryFile = viper.GetString("DATABASE_QUERY_FILE")
+	cfg.Database.SeedQuery = viper.GetString("DATABASE_SEED_QUERY")
+	cfg.Database.QueryTemplate = viper.GetString("DATABASE_QUERY_TEMPLATE")
 	cfg.Database.QueryInterval = viper.GetDuration("DATABASE_QUERY_INTERVAL")
 	cfg.Database.ConcurrentWorkers = viper.GetInt("DATABASE_CONCURRENT_WORKERS")
 
+	// Load queries from the file if specified
+	if cfg.Database.QueryFile != "" {
+		queries, err := loadQueriesFromFile(cfg.Database.QueryFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load queries from file: %w", err)
+		}
+		cfg.Database.Queries = queries
+	}
+
 	return &cfg, nil
+}
+
+// loadQueriesFromFile reads and splits the SQL queries from the file
+func loadQueriesFromFile(filePath string) ([]string, error) {
+    // Read the entire file content
+    content, err := ioutil.ReadFile(filePath)
+    if err != nil {
+        return nil, fmt.Errorf("error reading query file: %w", err)
+    }
+
+    // Split the content into separate queries using ";" as a delimiter
+    queries := strings.Split(string(content), ";")
+
+    // Clean up each query by trimming whitespace and filtering out empty entries
+    var cleanQueries []string
+    for _, query := range queries {
+        query = strings.TrimSpace(query)
+        if query != "" {
+            cleanQueries = append(cleanQueries, query)
+        }
+    }
+    return cleanQueries, nil
 }
