@@ -1,16 +1,14 @@
-package cmd
+package main
 
 import (
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-	"mysql-connection-tester/config"
-	"mysql-connection-tester/database"
 )
 
 // StartCmdWithConfig allows for starting with dependency injection (for testing)
-func StartCmdWithConfig(cfg *config.Config, dbInitFunc func(cfg *config.Config) (*database.DBWrapper, error)) error {
+func StartCmdWithConfig(cfg *Config, dbInitFunc func(cfg *Config) (*DBWrapper, error)) error {
 	// Initialize the database connection using the injected function
 	dbWrapper, err := dbInitFunc(cfg)
 	if err != nil {
@@ -22,7 +20,7 @@ func StartCmdWithConfig(cfg *config.Config, dbInitFunc func(cfg *config.Config) 
 
 	// Start multiple workers based on the configuration
 	for i := 0; i < cfg.Database.ConcurrentWorkers; i++ {
-		go database.TestLoop(cfg, dbWrapper.DB, i)
+		go TestLoop(cfg, dbWrapper.DB, i)
 	}
 
 	// Set up signal handling to allow graceful shutdown
@@ -33,4 +31,3 @@ func StartCmdWithConfig(cfg *config.Config, dbInitFunc func(cfg *config.Config) 
 	log.Println("Shutting down gracefully")
 	return nil
 }
-

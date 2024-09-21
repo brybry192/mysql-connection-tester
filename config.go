@@ -1,29 +1,27 @@
-package config
+package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"strings"
 	"time"
 
-	"gopkg.in/yaml.v2"
 	"github.com/spf13/viper"
+	"gopkg.in/yaml.v2"
 )
 
 type DatabaseConfig struct {
-	DSN             string        `yaml:"dsn"`
-	MaxOpenConns    int           `yaml:"max_open_conns"`
-	MaxIdleConns    int           `yaml:"max_idle_conns"`
-	ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"`
-	ConnIdleTimeout time.Duration `yaml:"conn_idle_timeout"`
-	TestQuery       string        `yaml:"test_query"`
-	QueryFile       string        `yaml:"query_file"`
-	SeedQuery       string        `yaml:"seed_query"`
-	QueryTemplate   string        `yaml:"query_template"`
-	QueryInterval   time.Duration `yaml:"query_interval"`
-	ConcurrentWorkers int         `yaml:"concurrent_workers"`
-	Queries         []string      `yaml:"queries"`
+	DSN               string        `yaml:"dsn"`
+	MaxOpenConns      int           `yaml:"max_open_conns"`
+	MaxIdleConns      int           `yaml:"max_idle_conns"`
+	ConnMaxLifetime   time.Duration `yaml:"conn_max_lifetime"`
+	ConnIdleTimeout   time.Duration `yaml:"conn_idle_timeout"`
+	TestQuery         string        `yaml:"test_query"`
+	QueryFile         string        `yaml:"query_file"`
+	SeedQuery         string        `yaml:"seed_query"`
+	QueryTemplate     string        `yaml:"query_template"`
+	QueryInterval     time.Duration `yaml:"query_interval"`
+	ConcurrentWorkers int           `yaml:"concurrent_workers"`
+	Queries           []string      `yaml:"queries"`
 }
 
 type Config struct {
@@ -74,36 +72,5 @@ func LoadConfig(configFile string) (*Config, error) {
 	cfg.Database.QueryInterval = viper.GetDuration("DATABASE_QUERY_INTERVAL")
 	cfg.Database.ConcurrentWorkers = viper.GetInt("DATABASE_CONCURRENT_WORKERS")
 
-	// Load queries from the file if specified
-	if cfg.Database.QueryFile != "" {
-		queries, err := loadQueriesFromFile(cfg.Database.QueryFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load queries from file: %w", err)
-		}
-		cfg.Database.Queries = queries
-	}
-
 	return &cfg, nil
-}
-
-// loadQueriesFromFile reads and splits the SQL queries from the file
-func loadQueriesFromFile(filePath string) ([]string, error) {
-    // Read the entire file content
-    content, err := ioutil.ReadFile(filePath)
-    if err != nil {
-        return nil, fmt.Errorf("error reading query file: %w", err)
-    }
-
-    // Split the content into separate queries using ";" as a delimiter
-    queries := strings.Split(string(content), ";")
-
-    // Clean up each query by trimming whitespace and filtering out empty entries
-    var cleanQueries []string
-    for _, query := range queries {
-        query = strings.TrimSpace(query)
-        if query != "" {
-            cleanQueries = append(cleanQueries, query)
-        }
-    }
-    return cleanQueries, nil
 }

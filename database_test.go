@@ -1,9 +1,9 @@
-package database
+package main
 
 import (
-	"testing"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
+	"testing"
 )
 
 func TestFetchSeedValues(t *testing.T) {

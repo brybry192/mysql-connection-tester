@@ -1,4 +1,4 @@
-package database
+package main
 
 import (
 	"context"
@@ -11,15 +11,14 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
-	"mysql-connection-tester/config"
 )
 
 // Global variables for shared container and database connection
 var (
 	mysqlContainer testcontainers.Container
 	db             *sqlx.DB
-	MysqlHost           string         // To store the MySQL container host
-	MysqlPort           string         // To store the MySQL container port
+	MysqlHost      string // To store the MySQL container host
+	MysqlPort      string // To store the MySQL container port
 )
 
 // TestMain handles setup and teardown for all integration tests
@@ -46,19 +45,19 @@ func TestMain(m *testing.M) {
 
 // waitForDatabaseConnection ensures the database is ready before running the tests
 func waitForDatabaseConnection(db *sqlx.DB, timeout time.Duration) error {
-        start := time.Now()
-        for {
-                err := db.Ping()
-                if err == nil {
-                        return nil
-                }
+	start := time.Now()
+	for {
+		err := db.Ping()
+		if err == nil {
+			return nil
+		}
 
-                if time.Since(start) > timeout {
-                        return fmt.Errorf("timeout reached while waiting for database connection: %v", err)
-                }
+		if time.Since(start) > timeout {
+			return fmt.Errorf("timeout reached while waiting for database connection: %v", err)
+		}
 
-                time.Sleep(1 * time.Second) // Sleep briefly before retrying
-        }
+		time.Sleep(1 * time.Second) // Sleep briefly before retrying
+	}
 }
 
 // setupMySQLContainer starts a single MySQL container for all integration tests
@@ -108,16 +107,16 @@ func setupMySQLContainer() (testcontainers.Container, *sqlx.DB, error) {
 		}
 	}
 
-        // Set up the table and test data
-        _, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (id BIGINT NOT NULL AUTO_INCREMENT, user VARCHAR(255) DEFAULT NULL, name VARCHAR(255) DEFAULT NULL, PRIMARY KEY (id))`)
-        if err != nil {
-                log.Fatalf("Failed to create table: %v", err)
-        }
+	// Set up the table and test data
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (id BIGINT NOT NULL AUTO_INCREMENT, user VARCHAR(255) DEFAULT NULL, name VARCHAR(255) DEFAULT NULL, PRIMARY KEY (id))`)
+	if err != nil {
+		log.Fatalf("Failed to create table: %v", err)
+	}
 
-        _, err = db.Exec(`INSERT INTO users (user, name) VALUES ('foobar', 'Foo Bar')`)
-        if err != nil {
-                log.Fatalf("Failed to insert test data: %v", err)
-        }
+	_, err = db.Exec(`INSERT INTO users (user, name) VALUES ('foobar', 'Foo Bar')`)
+	if err != nil {
+		log.Fatalf("Failed to insert test data: %v", err)
+	}
 
 	return mysqlContainer, sqlxDB, nil
 }
@@ -125,8 +124,8 @@ func setupMySQLContainer() (testcontainers.Container, *sqlx.DB, error) {
 // TestInitializeDB tests the InitializeDB function
 func TestInitializeDB(t *testing.T) {
 	// Define configuration for testing
-	cfg := &config.Config{
-		Database: config.DatabaseConfig{
+	cfg := &Config{
+		Database: DatabaseConfig{
 			DSN:             fmt.Sprintf("root:password@tcp(%s:%s)/testdb?parseTime=true", "localhost", "3306"),
 			MaxOpenConns:    10,
 			MaxIdleConns:    5,
@@ -138,7 +137,7 @@ func TestInitializeDB(t *testing.T) {
 	// Test InitializeDB function
 	dbWrapper, err := InitializeDBWrapper(cfg)
 	if err != nil {
-		
+
 		t.Fatalf("InitializeDB failed: %v", err)
 	}
 	defer dbWrapper.Close()
@@ -163,10 +162,10 @@ func TestTestLoop(t *testing.T) {
 	}
 
 	// Configuration setup
-	cfg := &config.Config{
-		Database: config.DatabaseConfig{
-			TestQuery:       "SELECT id FROM users LIMIT 1",
-			QueryInterval:   1 * time.Second,
+	cfg := &Config{
+		Database: DatabaseConfig{
+			TestQuery:         "SELECT id FROM users LIMIT 1",
+			QueryInterval:     1 * time.Second,
 			ConcurrentWorkers: 1,
 		},
 	}
