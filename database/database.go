@@ -11,6 +11,35 @@ import (
 	"mysql-connection-tester/config"
 )
 
+// DB is the shared database connection instance
+var DB *DBWrapper
+
+// DBWrapper is a wrapper for handling the database connection and the mock
+type DBWrapper struct {
+	DB    *sqlx.DB
+	Close func()
+}
+
+// InitializeDBWrapper initializes the DB connection and sets the appropriate configurations
+func InitializeDBWrapper(cfg *config.Config) (*DBWrapper, error) {
+	db, err := sqlx.Connect("mysql", cfg.Database.DSN)
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the connection pool parameters
+	db.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+	db.SetConnMaxLifetime(cfg.Database.ConnMaxLifetime)
+
+	DB = &DBWrapper{
+		DB:    db,
+		Close: func() { db.Close() },
+	}
+
+	return DB, nil
+}
+
 // TestLoop runs multiple test queries in parallel within a single worker
 func TestLoop(cfg *config.Config, db *sqlx.DB, workerID int) {
 	numQueriesPerWorker := 1 // Number of concurrent queries per worker

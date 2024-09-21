@@ -11,21 +11,23 @@ import (
 	"github.com/spf13/viper"
 )
 
+type DatabaseConfig struct {
+	DSN             string        `yaml:"dsn"`
+	MaxOpenConns    int           `yaml:"max_open_conns"`
+	MaxIdleConns    int           `yaml:"max_idle_conns"`
+	ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"`
+	ConnIdleTimeout time.Duration `yaml:"conn_idle_timeout"`
+	TestQuery       string        `yaml:"test_query"`
+	QueryFile       string        `yaml:"query_file"`
+	SeedQuery       string        `yaml:"seed_query"`
+	QueryTemplate   string        `yaml:"query_template"`
+	QueryInterval   time.Duration `yaml:"query_interval"`
+	ConcurrentWorkers int         `yaml:"concurrent_workers"`
+	Queries         []string      `yaml:"queries"`
+}
+
 type Config struct {
-	Database struct {
-		DSN             string        `yaml:"dsn"`
-		MaxOpenConns    int           `yaml:"max_open_conns"`
-		MaxIdleConns    int           `yaml:"max_idle_conns"`
-		ConnMaxLifetime time.Duration `yaml:"conn_max_lifetime"`
-		ConnIdleTimeout time.Duration `yaml:"conn_idle_timeout"`
-		TestQuery       string        `yaml:"test_query"`
-		QueryFile       string        `yaml:"query_file"`
-		SeedQuery       string        `yaml:"seed_query"`       // New field for seed query
-		QueryTemplate   string        `yaml:"query_template"`   // New field for query template
-		QueryInterval   time.Duration `yaml:"query_interval"`
-		ConcurrentWorkers int         `yaml:"concurrent_workers"`
-		Queries         []string      // List of queries read from the SQL file
-	} `yaml:"database"`
+	Database DatabaseConfig `yaml:"database"`
 }
 
 // LoadConfig loads configuration from yaml and environment variables
