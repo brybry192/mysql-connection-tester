@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/spf13/viper"
@@ -73,4 +75,26 @@ func LoadConfig(configFile string) (*Config, error) {
 	cfg.Database.ConcurrentWorkers = viper.GetInt("DATABASE_CONCURRENT_WORKERS")
 
 	return &cfg, nil
+}
+
+// loadQueriesFromFile reads and splits the SQL queries from the file
+func loadQueriesFromFile(filePath string) ([]string, error) {
+	// Read the entire file content
+	content, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading query file: %w", err)
+	}
+
+	// Split the content into separate queries using ";" as a delimiter
+	queries := strings.Split(string(content), ";")
+
+	// Clean up each query by trimming whitespace and filtering out empty entries
+	var cleanQueries []string
+	for _, query := range queries {
+		query = strings.TrimSpace(query)
+		if query != "" {
+			cleanQueries = append(cleanQueries, query)
+		}
+	}
+	return cleanQueries, nil
 }

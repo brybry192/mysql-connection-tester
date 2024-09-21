@@ -12,7 +12,6 @@ func StartCmdWithConfig(cfg *Config, dbInitFunc func(cfg *Config) (*DBWrapper, e
 	// Initialize the database connection using the injected function
 	dbWrapper, err := dbInitFunc(cfg)
 	if err != nil {
-		log.Fatalf("Failed to initialize database: %v", err)
 		return err
 	}
 	defer dbWrapper.Close()

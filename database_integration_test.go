@@ -16,9 +16,8 @@ import (
 // Global variables for shared container and database connection
 var (
 	mysqlContainer testcontainers.Container
-	db             *sqlx.DB
-	MysqlHost      string // To store the MySQL container host
-	MysqlPort      string // To store the MySQL container port
+	MysqlHost      string = "127.0.0.1" // To store the MySQL container host
+	MysqlPort      string = "13306"     // To store the MySQL container port
 )
 
 // TestMain handles setup and teardown for all integration tests
@@ -68,7 +67,7 @@ func setupMySQLContainer() (testcontainers.Container, *sqlx.DB, error) {
 		Image:        "mysql:8.0",
 		Env:          map[string]string{"MYSQL_ROOT_PASSWORD": "password", "MYSQL_DATABASE": "testdb"},
 		ExposedPorts: []string{"3306/tcp"},
-		WaitingFor:   wait.ForListeningPort("3306/tcp").WithStartupTimeout(2 * time.Minute),
+		WaitingFor:   wait.ForListeningPort("3306/tcp").WithStartupTimeout(30 * time.Second),
 	}
 
 	mysqlContainer, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -79,26 +78,28 @@ func setupMySQLContainer() (testcontainers.Container, *sqlx.DB, error) {
 		return nil, nil, fmt.Errorf("failed to start MySQL container: %w", err)
 	}
 
-	host, err := mysqlContainer.Host(ctx)
+	// Get the container's host and mapped port
+	MysqlHost, err = mysqlContainer.Host(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get MySQL container host: %w", err)
 	}
-	MysqlHost = fmt.Sprintf("%s", host)
-	port, err := mysqlContainer.MappedPort(ctx, "3306")
+
+	// Fetch the explicitly mapped port 13306
+	mappedPort, err := mysqlContainer.MappedPort(ctx, "3306")
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get MySQL container port: %w", err)
 	}
-	MysqlPort = fmt.Sprintf("%v", port)
+	MysqlPort = mappedPort.Port()
 
-	dsn := fmt.Sprintf("root:password@tcp(%s:%s)/testdb?parseTime=true", host, port.Port())
-	sqlxDB, err := sqlx.Connect("mysql", dsn)
+	dsn := fmt.Sprintf("root:password@tcp(%s:%s)/testdb?parseTime=true", MysqlHost, MysqlPort)
+	db, err := sqlx.Connect("mysql", dsn)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to connect to MySQL container: %w", err)
 	}
 
 	// Wait until the connection is ready
 	for i := 0; i < 10; i++ {
-		if err := sqlxDB.Ping(); err == nil {
+		if err := db.Ping(); err == nil {
 			break
 		}
 		time.Sleep(2 * time.Second)
@@ -106,6 +107,9 @@ func setupMySQLContainer() (testcontainers.Container, *sqlx.DB, error) {
 			return nil, nil, fmt.Errorf("MySQL container not ready: %w", err)
 		}
 	}
+
+	// Create the database
+	_, err = db.Exec(`show databases`)
 
 	// Set up the table and test data
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (id BIGINT NOT NULL AUTO_INCREMENT, user VARCHAR(255) DEFAULT NULL, name VARCHAR(255) DEFAULT NULL, PRIMARY KEY (id))`)
@@ -118,7 +122,7 @@ func setupMySQLContainer() (testcontainers.Container, *sqlx.DB, error) {
 		log.Fatalf("Failed to insert test data: %v", err)
 	}
 
-	return mysqlContainer, sqlxDB, nil
+	return mysqlContainer, db, nil
 }
 
 // TestInitializeDB tests the InitializeDB function
@@ -126,7 +130,7 @@ func TestInitializeDB(t *testing.T) {
 	// Define configuration for testing
 	cfg := &Config{
 		Database: DatabaseConfig{
-			DSN:             fmt.Sprintf("root:password@tcp(%s:%s)/testdb?parseTime=true", "localhost", "3306"),
+			DSN:             fmt.Sprintf("root:password@tcp(%s:%s)/testdb?parseTime=true", MysqlHost, MysqlPort),
 			MaxOpenConns:    10,
 			MaxIdleConns:    5,
 			ConnMaxLifetime: 30 * time.Second,

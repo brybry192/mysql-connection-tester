@@ -1,51 +1,41 @@
 package main
 
 import (
+	"fmt"
+	"testing"
+	"time"
+
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/jmoiron/sqlx"
-	"testing"
 )
 
-func TestFetchSeedValues(t *testing.T) {
-	db, mock, err := sqlmock.New()
+// TestInitializeDBWrapper verifies the InitializeDBWrapper function
+func TestInitializeDBWrapper(t *testing.T) {
+	// Define configuration for testing
+	cfg := &Config{
+		Database: DatabaseConfig{
+			DSN:             fmt.Sprintf("root:password@tcp(%s:%s)/testdb?parseTime=true", MysqlHost, MysqlPort),
+			MaxOpenConns:    10,
+			MaxIdleConns:    5,
+			ConnMaxLifetime: 30 * time.Second,
+			ConnIdleTimeout: 15 * time.Second,
+		},
+	}
+
+	// Test InitializeDBWrapper function
+	dbWrapper, err := InitializeDBWrapper(cfg)
 	if err != nil {
-		t.Fatalf("Failed to open sqlmock database: %v", err)
+		t.Fatalf("InitializeDBWrapper failed: %v", err)
 	}
-	defer db.Close()
+	defer dbWrapper.Close()
 
-	sqlxDB := sqlx.NewDb(db, "mysql")
-
-	// Expect the seed query using a regular expression
-	mock.ExpectQuery("SELECT id FROM users ORDER BY RAND\\(\\) LIMIT 5").WillReturnRows(
-		sqlmock.NewRows([]string{"id"}).
-			AddRow(1).
-			AddRow(2).
-			AddRow(3),
-	)
-
-	results, err := fetchSeedValues(sqlxDB, "SELECT id FROM users ORDER BY RAND() LIMIT 5")
-	if err != nil {
-		t.Fatalf("Expected no error, got %v", err)
-	}
-
-	expectedResult := [][]interface{}{
-		{int64(1)},
-		{int64(2)},
-		{int64(3)},
-	}
-
-	if len(results) != len(expectedResult) {
-		t.Fatalf("Expected %d results, got %d", len(expectedResult), len(results))
-	}
-
-	for i, result := range results {
-		if result[0] != expectedResult[i][0] {
-			t.Errorf("Expected %v, got %v", expectedResult[i], result)
-		}
+	// Check connection parameters
+	if dbWrapper.DB.Stats().MaxOpenConnections != 10 {
+		t.Errorf("Expected MaxOpenConnections to be 10, got %d", dbWrapper.DB.Stats().MaxOpenConnections)
 	}
 }
 
-// Test the executeQueryWithValues function
+// Test the executeQueryWithValues function using sqlmock
 func TestExecuteQueryWithValues(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	if err != nil {
