@@ -152,8 +152,8 @@ func TestInitializeDB(t *testing.T) {
 	}
 }
 
-// TestTestLoop tests the TestLoop function
-func TestTestLoop(t *testing.T) {
+// TestRunQueryWorkers tests the RunQueryWorkers function
+func TestRunQueryWorkers(t *testing.T) {
 	// Set up a test database
 	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS users (id BIGINT NOT NULL AUTO_INCREMENT, user VARCHAR(255) DEFAULT NULL, name VARCHAR(255) DEFAULT NULL, PRIMARY KEY (id))`)
 	if err != nil {
@@ -178,21 +178,21 @@ func TestTestLoop(t *testing.T) {
 	stopChan := make(chan struct{})
 	doneChan := make(chan struct{})
 
-	// Run TestLoop in a separate goroutine
+	// Run RunQueryWorkers in a separate goroutine
 	go func() {
 		defer close(doneChan)
-		TestLoop(cfg, db, 1)
+		RunQueryWorkers(cfg, db, 1)
 	}()
 
-	// Allow TestLoop to run for a few seconds
+	// Allow RunQueryWorkers to run for a few seconds
 	time.Sleep(5 * time.Second)
 
-	// Signal TestLoop to stop
+	// Signal RunQueryWorkers to stop
 	close(stopChan)
 
-	// Wait for TestLoop to finish
+	// Wait for RunQueryWorkers to finish
 	<-doneChan
 
 	// Log success message
-	log.Printf("TestLoop executed successfully")
+	log.Printf("RunQueryWorkers executed successfully")
 }

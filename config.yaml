@@ -10,3 +10,5 @@ database:
   query_template: "SELECT * FROM users WHERE id = ?"          # New query template
   query_interval: 1s
   concurrent_workers: 5
+  queries_per_worker: 1
+  idle_connections: 10                  # Open extra idle connections per worker

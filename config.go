@@ -12,18 +12,20 @@ import (
 )
 
 type DatabaseConfig struct {
-	DSN               string        `yaml:"dsn"`
-	MaxOpenConns      int           `yaml:"max_open_conns"`
-	MaxIdleConns      int           `yaml:"max_idle_conns"`
-	ConnMaxLifetime   time.Duration `yaml:"conn_max_lifetime"`
-	ConnIdleTimeout   time.Duration `yaml:"conn_idle_timeout"`
-	TestQuery         string        `yaml:"test_query"`
-	QueryFile         string        `yaml:"query_file"`
-	SeedQuery         string        `yaml:"seed_query"`
-	QueryTemplate     string        `yaml:"query_template"`
-	QueryInterval     time.Duration `yaml:"query_interval"`
-	ConcurrentWorkers int           `yaml:"concurrent_workers"`
-	Queries           []string      `yaml:"queries"`
+	DSN                string        `yaml:"dsn"`
+	MaxOpenConns       int           `yaml:"max_open_conns"`
+	MaxIdleConns       int           `yaml:"max_idle_conns"`
+	ConnMaxLifetime    time.Duration `yaml:"conn_max_lifetime"`
+	ConnIdleTimeout    time.Duration `yaml:"conn_idle_timeout"`
+	NumIdleConnections int           `yaml:"idle_connections"`
+	TestQuery          string        `yaml:"test_query"`
+	QueryFile          string        `yaml:"query_file"`
+	SeedQuery          string        `yaml:"seed_query"`
+	QueryTemplate      string        `yaml:"query_template"`
+	QueryInterval      time.Duration `yaml:"query_interval"`
+	ConcurrentWorkers  int           `yaml:"concurrent_workers"`
+	QueriesPerWorker   int           `yaml:"queries_per_worker"`
+	Queries            []string      `yaml:"queries"`
 }
 
 type Config struct {

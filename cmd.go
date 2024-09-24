@@ -1,11 +1,21 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
+
+// logWriter implements io.Writer
+type logWriter struct{}
+
+func (lg *logWriter) Write(p []byte) (int, error) {
+	// Format the current time with dashes and customize
+	return fmt.Printf("%v %v", time.Now().Format("2006-01-02 15:04:05"), string(p))
+}
 
 // StartCmdWithConfig allows for starting with dependency injection (for testing)
 func StartCmdWithConfig(cfg *Config, dbInitFunc func(cfg *Config) (*DBWrapper, error)) error {
@@ -17,9 +27,10 @@ func StartCmdWithConfig(cfg *Config, dbInitFunc func(cfg *Config) (*DBWrapper, e
 	defer dbWrapper.Close()
 	log.Println("Connected to the database successfully")
 
+	fmt.Println(dbWrapper.DB)
 	// Start multiple workers based on the configuration
 	for i := 0; i < cfg.Database.ConcurrentWorkers; i++ {
-		go TestLoop(cfg, dbWrapper.DB, i)
+		go RunQueryWorkers(cfg, dbWrapper.DB, i)
 	}
 
 	// Set up signal handling to allow graceful shutdown

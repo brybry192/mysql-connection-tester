@@ -5,6 +5,10 @@ import (
 )
 
 func main() {
+	// Customize log output format
+	log.SetFlags(0) // Disable default timestamp
+	log.SetOutput(new(logWriter))
+
 	// Load configuration
 	cfg, err := LoadConfig("config.yaml")
 	if err != nil {
