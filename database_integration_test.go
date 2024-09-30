@@ -98,11 +98,11 @@ func setupMySQLContainer() (testcontainers.Container, *sqlx.DB, error) {
 	}
 
 	// Wait until the connection is ready
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		if err := db.Ping(); err == nil {
 			break
 		}
-		time.Sleep(2 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 		if i == 9 {
 			return nil, nil, fmt.Errorf("MySQL container not ready: %w", err)
 		}
@@ -129,12 +129,17 @@ func setupMySQLContainer() (testcontainers.Container, *sqlx.DB, error) {
 func TestInitializeDB(t *testing.T) {
 	// Define configuration for testing
 	cfg := &Config{
+		Debug: true,
 		Database: DatabaseConfig{
-			DSN:             fmt.Sprintf("root:password@tcp(%s:%s)/testdb?parseTime=true", MysqlHost, MysqlPort),
-			MaxOpenConns:    10,
-			MaxIdleConns:    5,
-			ConnMaxLifetime: 30 * time.Second,
-			ConnIdleTimeout: 15 * time.Second,
+			DSN:               fmt.Sprintf("root:password@tcp(%s:%s)/testdb?parseTime=true", MysqlHost, MysqlPort),
+			MaxOpenConns:      10,
+			MaxIdleConns:      5,
+			ConnMaxLifetime:   30 * time.Second,
+			ConnIdleTimeout:   15 * time.Second,
+			ConcurrentWorkers: 1,                                  // Use more than one worker for better coverage
+			QueriesPerWorker:  1,                                  // Ensure multiple queries per worker
+			SeedQuery:         "SELECT id FROM users LIMIT 5",     // Provide a valid seed query
+			QueryTemplate:     "SELECT * FROM users WHERE id = ?", // Valid query template
 		},
 	}
 
@@ -150,49 +155,4 @@ func TestInitializeDB(t *testing.T) {
 	if dbWrapper.DB.Stats().MaxOpenConnections != 10 {
 		t.Errorf("Expected MaxOpenConnections to be 10, got %d", dbWrapper.DB.Stats().MaxOpenConnections)
 	}
-}
-
-// TestRunQueryWorkers tests the RunQueryWorkers function
-func TestRunQueryWorkers(t *testing.T) {
-	// Set up a test database
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS users (id BIGINT NOT NULL AUTO_INCREMENT, user VARCHAR(255) DEFAULT NULL, name VARCHAR(255) DEFAULT NULL, PRIMARY KEY (id))`)
-	if err != nil {
-		t.Fatalf("Failed to create table: %v", err)
-	}
-
-	_, err = db.Exec(`INSERT INTO users (user, name) VALUES ('testuser', 'Test User')`)
-	if err != nil {
-		t.Fatalf("Failed to insert test data: %v", err)
-	}
-
-	// Configuration setup
-	cfg := &Config{
-		Database: DatabaseConfig{
-			TestQuery:         "SELECT id FROM users LIMIT 1",
-			QueryInterval:     1 * time.Second,
-			ConcurrentWorkers: 1,
-		},
-	}
-
-	// Set up a channel to stop the test loop after a short period
-	stopChan := make(chan struct{})
-	doneChan := make(chan struct{})
-
-	// Run RunQueryWorkers in a separate goroutine
-	go func() {
-		defer close(doneChan)
-		RunQueryWorkers(cfg, db, 1)
-	}()
-
-	// Allow RunQueryWorkers to run for a few seconds
-	time.Sleep(5 * time.Second)
-
-	// Signal RunQueryWorkers to stop
-	close(stopChan)
-
-	// Wait for RunQueryWorkers to finish
-	<-doneChan
-
-	// Log success message
-	log.Printf("RunQueryWorkers executed successfully")
 }

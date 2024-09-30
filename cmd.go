@@ -9,6 +9,9 @@ import (
 	"time"
 )
 
+// Global for debug logging
+var debug bool
+
 // logWriter implements io.Writer
 type logWriter struct{}
 
@@ -19,6 +22,11 @@ func (lg *logWriter) Write(p []byte) (int, error) {
 
 // StartCmdWithConfig allows for starting with dependency injection (for testing)
 func StartCmdWithConfig(cfg *Config, dbInitFunc func(cfg *Config) (*DBWrapper, error)) error {
+
+	// Customize log output format
+	log.SetFlags(0) // Disable default timestamp
+	log.SetOutput(new(logWriter))
+
 	// Initialize the database connection using the injected function
 	dbWrapper, err := dbInitFunc(cfg)
 	if err != nil {
@@ -27,10 +35,13 @@ func StartCmdWithConfig(cfg *Config, dbInitFunc func(cfg *Config) (*DBWrapper, e
 	defer dbWrapper.Close()
 	log.Println("Connected to the database successfully")
 
-	fmt.Println(dbWrapper.DB)
+	// Start prometheus server
+	go startMetricsServer(cfg.MetricsPort, "/metrics")
+
 	// Start multiple workers based on the configuration
 	for i := 0; i < cfg.Database.ConcurrentWorkers; i++ {
 		go RunQueryWorkers(cfg, dbWrapper.DB, i)
+		go collectDBPoolMetrics(dbWrapper.DB, fmt.Sprintf("%d", i), cfg.MetricsInterval)
 	}
 
 	// Set up signal handling to allow graceful shutdown

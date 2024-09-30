@@ -7,6 +7,7 @@ import (
 )
 
 func TestLoadQueriesFromFile(t *testing.T) {
+
 	// Create a temporary file with sample SQL queries
 	sqlFileContent := "SELECT * FROM users WHERE id = 1;\nSELECT * FROM users WHERE id = 2;\n"
 	tmpFile, err := os.CreateTemp("", "queries.sql")
@@ -43,6 +44,7 @@ func TestLoadQueriesFromFile(t *testing.T) {
 }
 
 func TestLoadConfig(t *testing.T) {
+
 	// Create a temporary YAML config file
 	yamlContent := `
 database:
@@ -58,18 +60,45 @@ database:
   query_interval: 1s
   concurrent_workers: 5
 `
+
+	// Test loading a non-existent config file
+	_, err := LoadConfig("foobar-noname-file")
+	if err == nil {
+		t.Fatalf("Failure expected loading non-existent config file: %v", err)
+	}
+
+	// Test failure cases on config
+	// Create bad YAML config content
+	badContent := `badContent- foo`
+
+	// Create temp file for loading bad content
+	badTmpFile, err := os.CreateTemp("", "config.yaml")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer os.Remove(badTmpFile.Name()) // Clean up after the test
+	if _, err := badTmpFile.Write([]byte(badContent)); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	// Load the bad config file
+	cfg, err := LoadConfig(badTmpFile.Name())
+	if err == nil {
+		t.Fatalf("Failed to verify bad yaml file: %v", err)
+	}
+
+	// Create temp file for loading bad content
 	tmpFile, err := os.CreateTemp("", "config.yaml")
 	if err != nil {
 		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name()) // Clean up after the test
-
+	// Test success cases
+	// Write good yaml content
 	if _, err := tmpFile.Write([]byte(yamlContent)); err != nil {
 		t.Fatalf("Failed to write to temp file: %v", err)
 	}
 
 	// Load the config file
-	cfg, err := LoadConfig(tmpFile.Name())
+	cfg, err = LoadConfig(tmpFile.Name())
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}

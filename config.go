@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -29,7 +28,10 @@ type DatabaseConfig struct {
 }
 
 type Config struct {
-	Database DatabaseConfig `yaml:"database"`
+	Debug           bool           `yaml:"debug"`
+	MetricsInterval time.Duration  `yaml:"metrics_interval"`
+	MetricsPort     string         `yaml:"metrics_port"`
+	Database        DatabaseConfig `yaml:"database"`
 }
 
 // LoadConfig loads configuration from yaml and environment variables
@@ -52,6 +54,9 @@ func LoadConfig(configFile string) (*Config, error) {
 	viper.SetEnvPrefix("MYSQLTESTER")
 	viper.AutomaticEnv()
 
+	viper.SetDefault("DEBUG", cfg.Debug)
+	viper.SetDefault("METRICS_PORT", cfg.MetricsPort)
+	viper.SetDefault("METRICS_INTERVAL", cfg.MetricsInterval)
 	viper.SetDefault("DATABASE_DSN", cfg.Database.DSN)
 	viper.SetDefault("DATABASE_MAX_OPEN_CONNS", cfg.Database.MaxOpenConns)
 	viper.SetDefault("DATABASE_MAX_IDLE_CONNS", cfg.Database.MaxIdleConns)
@@ -82,7 +87,7 @@ func LoadConfig(configFile string) (*Config, error) {
 // loadQueriesFromFile reads and splits the SQL queries from the file
 func loadQueriesFromFile(filePath string) ([]string, error) {
 	// Read the entire file content
-	content, err := ioutil.ReadFile(filePath)
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("error reading query file: %w", err)
 	}

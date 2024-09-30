@@ -51,6 +51,7 @@ func RunQueryWorkers(cfg *Config, db *sqlx.DB, workerID int) {
 	// Execute the seed query to fetch input values
 	_, inputValues, err := genericQuery(db, cfg.Database.SeedQuery, nil)
 	if err != nil || len(inputValues) == 0 {
+		queryErrors.WithLabelValues(fmt.Sprintf("%d", workerID), "worker_id").Inc()
 		log.Printf("[Worker %d] Failed to fetch seed values: %v", workerID, err)
 		return
 	}
@@ -73,13 +74,20 @@ func RunQueryWorkers(cfg *Config, db *sqlx.DB, workerID int) {
 					queryValues = append(queryValues, value)
 				}
 
+				startTime := time.Now() // Start time tracking
 				// Execute the query template with the seed values
 				_, rows, err := genericQuery(db, cfg.Database.QueryTemplate, queryValues)
+				duration := time.Since(startTime).Seconds() // Calculate duration
+				queryDuration.WithLabelValues(fmt.Sprintf("%d", workerID), "worker_id").Observe(duration)
+
 				if err != nil {
+					queryErrors.WithLabelValues(fmt.Sprintf("%d", workerID), "worker_id").Inc()
 					log.Printf("[Worker %d - Query %d] Query failed: %v\n", workerID, i, err)
 					continue
 				}
-				log.Printf("[Worker %d - Query %d] Executed query: %v", workerID, i, rows)
+				if debug {
+					log.Printf("[Worker %d - Query %d] Executed query: %v", workerID, i, rows)
+				}
 			}
 		}
 
@@ -228,4 +236,15 @@ func warmUpConnections(db *sqlx.DB, cfg *Config) error {
 		}()
 	}
 	return nil
+}
+
+func collectDBPoolMetrics(db *sqlx.DB, poolName string, interval time.Duration) {
+	for {
+		stats := db.Stats()
+		openConnections.WithLabelValues(poolName).Set(float64(stats.OpenConnections))
+		idleConnections.WithLabelValues(poolName).Set(float64(stats.Idle))
+		inUseConnections.WithLabelValues(poolName).Set(float64(stats.InUse))
+		time.Sleep(interval) // Collect metrics every time duration
+	}
+	return
 }
